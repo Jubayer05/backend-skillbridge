@@ -1,14 +1,40 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
-    "outDir": "dist",
-    "rootDir": "src",
+    // File Layout
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    // Environment Settings
+    "module": "esnext",
+    "moduleResolution": "node",
+    "target": "es2023",
+
+    // For Node.js
+    "types": ["node"],
+    "lib": ["esnext"],
+
+    // Other Output
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    
+    // Stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+
+
+    // Recommended Options
     "strict": true,
     "esModuleInterop": true,
+    "ignoreDeprecations": "5.0",
+    "jsx": "react-jsx",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
     "skipLibCheck": true,
-    "types": ["node"]
+
   },
-  "include": ["src"]
+ "include": ["src/**/*"]
 }

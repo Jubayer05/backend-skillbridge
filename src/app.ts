@@ -1,13 +1,18 @@
 import cookieParser from "cookie-parser";
-import express from "express";
-// import { notFoundHandler, requestLogger } from "./middleware/utils";
+import express, { type Application } from "express";
+import cors from "cors";
+import router from "./routes";
 
-const app = express();
+const app: Application = express();
 
 // app.use(requestLogger);
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Routes
+app.use("/api/v1", router);
 
 // Health check routes
 app.get("/api/v1/health", (req, res) => {

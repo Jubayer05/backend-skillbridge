@@ -1,9 +1,9 @@
-import app from "./app";
-import { prisma } from "./lib/prisma";
+import app from "./app.js";
+import { prisma } from "./lib/prisma.js";
 
 const PORT = process.env.PORT || 8000;
 
-async function main() {
+async function server() {
   try {
     await prisma.$connect();
     console.log("Connected to database successfully 🚀");
@@ -20,9 +20,10 @@ async function main() {
       }
     });
   } catch (error) {
-    console.error(error);
+    await prisma.$disconnect();
+    console.error("Error connecting to database:", error);
     process.exit(1);
   }
 }
 
-main();
+server();
