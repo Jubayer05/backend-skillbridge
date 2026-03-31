@@ -1,0 +1,103 @@
+import type { NextFunction, Request, Response } from "express";
+import { authClient } from "../../lib/auth";
+
+// ─── Request type augmentation ────────────────────────────────────────────────
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        role: string;
+      };
+      session?: {
+        id: string;
+        userId: string;
+      };
+    }
+  }
+}
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+function buildWebHeaders(req: Request): Headers {
+  const headers = new Headers();
+
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (!value) continue;
+    headers.set(key, Array.isArray(value) ? value[0] ?? "" : value);
+  }
+
+  // Reconstruct cookie header from cookie-parser output when the raw header is absent
+  if (
+    !headers.get("cookie") &&
+    req.cookies &&
+    Object.keys(req.cookies).length > 0
+  ) {
+    const cookieString = Object.entries(req.cookies as Record<string, string>)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("; ");
+    headers.set("cookie", cookieString);
+  }
+
+  return headers;
+}
+
+// ─── Authentication middleware ────────────────────────────────────────────────
+
+export const authenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const session = await authClient.api.getSession({
+      headers: buildWebHeaders(req),
+      query: { disableCookieCache: true },
+    });
+
+    if (!session?.session || !session?.user) {
+      res.status(401).json({ error: "Unauthorized", message: "Invalid or expired session" });
+      return;
+    }
+
+    req.user = {
+      id: session.user.id,
+      email: session.user.email,
+      role: (session.user as { role?: string }).role ?? "STUDENT",
+    };
+
+    req.session = {
+      id: session.session.id,
+      userId: session.session.userId,
+    };
+
+    next();
+  } catch (error: unknown) {
+    console.error("Authentication error:", error);
+    const message = error instanceof Error ? error.message : "Authentication failed";
+    res.status(401).json({ error: "Unauthorized", message });
+  }
+};
+
+// ─── Authorization middleware ─────────────────────────────────────────────────
+
+export const authorize = (...allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      res.status(403).json({
+        error: "Forbidden",
+        message: `Access restricted to: ${allowedRoles.join(", ")}`,
+      });
+      return;
+    }
+
+    next();
+  };
+};

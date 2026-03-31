@@ -1,13 +1,24 @@
+import { toNodeHandler } from "better-auth/node";
 import cookieParser from "cookie-parser";
-import express, { type Application } from "express";
 import cors from "cors";
+import express, { type Application } from "express";
+import { authClient } from "./lib/auth";
 import router from "./routes";
 
 const app: Application = express();
 
-// app.use(requestLogger);
-app.use(cors());
 app.use(express.json());
+
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+  }),
+);
+
+// Mount the Better Auth handler before other middleware that parses bodies
+app.all("/api/auth/*splat", toNodeHandler(authClient));
+
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
