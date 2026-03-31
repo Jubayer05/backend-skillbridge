@@ -14,18 +14,48 @@ import {
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const result = await registerService(req.body, getHeadersAsWebHeaders(req));
-    res
-      .status(201)
-      .json({
-        message:
-          "Registration successful. Please check your email to verify your account.",
-        data: result.response,
-      });
+    const { name, email, password, role } = req.body as {
+      name?: string;
+      email?: string;
+      password?: string;
+      role?: string;
+    };
+
+    const normalizedRole = role === "TUTOR" ? "TUTOR" : "STUDENT";
+
+    const result = await registerService(
+      {
+        name,
+        email,
+        password,
+        role: normalizedRole,
+      },
+      getHeadersAsWebHeaders(req),
+    );
+    res.status(201).json({
+      message:
+        "Registration successful. Please check your email to verify your account.",
+      data: result.response,
+    });
   } catch (error: unknown) {
     console.error("Register error:", error);
     const message =
       error instanceof Error ? error.message : "Registration failed";
+    const normalizedMessage = message.toLowerCase();
+
+    if (
+      normalizedMessage.includes("already exists") ||
+      normalizedMessage.includes("already registered") ||
+      normalizedMessage.includes("user already exists") ||
+      normalizedMessage.includes("email already")
+    ) {
+      res.status(409).json({
+        error: "Registration failed",
+        message: "This email is already registered. Please sign in instead.",
+      });
+      return;
+    }
+
     res.status(500).json({ error: "Registration failed", message });
   }
 };
@@ -51,12 +81,10 @@ export const verifyEmail = async (req: Request, res: Response) => {
       getHeadersAsWebHeaders(req),
     );
     forwardSetCookie(res, result.headers);
-    res
-      .status(200)
-      .json({
-        message: "Verification email sent successfully",
-        data: result.response,
-      });
+    res.status(200).json({
+      message: "Verification email sent successfully",
+      data: result.response,
+    });
   } catch (error: unknown) {
     console.error("Verify email error:", error);
     const message =
@@ -109,12 +137,10 @@ export const forgotPassword = async (req: Request, res: Response) => {
       req.body as { email: string },
       getHeadersAsWebHeaders(req),
     );
-    res
-      .status(200)
-      .json({
-        message: "Password reset email sent successfully",
-        data: result.response,
-      });
+    res.status(200).json({
+      message: "Password reset email sent successfully",
+      data: result.response,
+    });
   } catch (error: unknown) {
     console.error("Forgot password error:", error);
     const message =
@@ -160,12 +186,10 @@ export const updatePassword = async (req: Request, res: Response) => {
       getHeadersAsWebHeaders(req),
     );
     forwardSetCookie(res, result.headers);
-    res
-      .status(200)
-      .json({
-        message: "Password updated successfully",
-        data: result.response,
-      });
+    res.status(200).json({
+      message: "Password updated successfully",
+      data: result.response,
+    });
   } catch (error: unknown) {
     console.error("Update password error:", error);
 
@@ -175,21 +199,17 @@ export const updatePassword = async (req: Request, res: Response) => {
       message?: string;
     };
     if (err.statusCode === 401 || err.status === "UNAUTHORIZED") {
-      res
-        .status(401)
-        .json({
-          error: "Unauthorized",
-          message: "Invalid session or current password",
-        });
+      res.status(401).json({
+        error: "Unauthorized",
+        message: "Invalid session or current password",
+      });
       return;
     }
 
-    res
-      .status(500)
-      .json({
-        error: "Update password failed",
-        message: err.message ?? "Unknown error",
-      });
+    res.status(500).json({
+      error: "Update password failed",
+      message: err.message ?? "Unknown error",
+    });
   }
 };
 

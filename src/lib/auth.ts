@@ -46,7 +46,7 @@ export const authClient = betterAuth({
     sendVerificationEmail: async (
       {
         user,
-        url,
+        token,
       }: {
         user: { email: string; name?: string | null };
         url: string;
@@ -54,7 +54,14 @@ export const authClient = betterAuth({
       },
       _request?: Request,
     ) => {
-      await sendVerificationEmail(user.email, url, user.name ?? undefined);
+      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+      const verificationUrl = `${frontendUrl}/auth/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
+
+      await sendVerificationEmail(
+        user.email,
+        verificationUrl,
+        user.name ?? undefined,
+      );
     },
   },
 
@@ -63,7 +70,7 @@ export const authClient = betterAuth({
       role: {
         type: "string" as const,
         defaultValue: "STUDENT",
-        input: false,
+        input: true,
         output: true,
       },
     },
