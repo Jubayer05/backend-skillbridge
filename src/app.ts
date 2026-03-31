@@ -9,9 +9,13 @@ const app: Application = express();
 
 app.use(express.json());
 
+// Strip trailing slash to avoid CORS header mismatch between
+// "https://example.com" (browser Origin) and "https://example.com/" (env var)
+const frontendOrigin = (process.env.FRONTEND_URL ?? "http://localhost:3000").replace(/\/$/, "");
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: frontendOrigin,
     credentials: true,
   }),
 );

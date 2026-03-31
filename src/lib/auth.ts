@@ -8,7 +8,9 @@ export const authClient = betterAuth({
     provider: "postgresql",
   }),
 
-  trustedOrigins: [process.env.FRONTEND_URL as string],
+  trustedOrigins: [
+    (process.env.FRONTEND_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+  ],
 
   emailAndPassword: {
     enabled: true,
@@ -78,6 +80,14 @@ export const authClient = betterAuth({
 
   advanced: {
     cookiePrefix: "skillbridge",
+    // SameSite=None + Secure is required when the frontend and backend
+    // are on different domains (e.g. different Vercel deployments).
+    // Without this the browser blocks the session cookie on cross-site
+    // POST requests, causing logout / protected routes to return 401.
+    defaultCookieAttributes: {
+      sameSite: "none" as const,
+      secure: true,
+    },
   },
 
   session: {
