@@ -1,4 +1,8 @@
-import type { NextFunction, Request, Response } from "express";
+import type {
+  NextFunction as ExpressNextFunction,
+  Request as ExpressRequest,
+  Response as ExpressResponse,
+} from "express";
 import { authClient } from "../../lib/auth";
 
 // ─── Request type augmentation ────────────────────────────────────────────────
@@ -21,8 +25,8 @@ declare global {
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-function buildWebHeaders(req: Request): Headers {
-  const headers = new Headers();
+function buildWebHeaders(req: ExpressRequest): globalThis.Headers {
+  const headers = new globalThis.Headers();
 
   for (const [key, value] of Object.entries(req.headers)) {
     if (!value) continue;
@@ -32,8 +36,9 @@ function buildWebHeaders(req: Request): Headers {
   // Reconstruct cookie header from cookie-parser output when the raw header is absent
   if (
     !headers.get("cookie") &&
+    "cookies" in req &&
     req.cookies &&
-    Object.keys(req.cookies).length > 0
+    Object.keys(req.cookies as Record<string, string>).length > 0
   ) {
     const cookieString = Object.entries(req.cookies as Record<string, string>)
       .map(([k, v]) => `${k}=${v}`)
@@ -47,9 +52,9 @@ function buildWebHeaders(req: Request): Headers {
 // ─── Authentication middleware ────────────────────────────────────────────────
 
 export const authenticate = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
+  req: ExpressRequest,
+  res: ExpressResponse,
+  next: ExpressNextFunction,
 ): Promise<void> => {
   try {
     const session = await authClient.api.getSession({
@@ -84,7 +89,11 @@ export const authenticate = async (
 // ─── Authorization middleware ─────────────────────────────────────────────────
 
 export const authorize = (...allowedRoles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (
+    req: ExpressRequest,
+    res: ExpressResponse,
+    next: ExpressNextFunction,
+  ): void => {
     if (!req.user) {
       res.status(401).json({ error: "Unauthorized" });
       return;

@@ -1,9 +1,14 @@
-import type { Request, Response } from "express";
+import type {
+  Request as ExpressRequest,
+  Response as ExpressResponse,
+} from "express";
 import { authClient } from "../../lib/auth";
 
 // ─── Header Helpers ───────────────────────────────────────────────────────────
 
-export function getHeadersFromRequest(req: Request): Record<string, string> {
+export function getHeadersFromRequest(
+  req: ExpressRequest,
+): Record<string, string> {
   const headers: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(req.headers)) {
@@ -16,7 +21,11 @@ export function getHeadersFromRequest(req: Request): Record<string, string> {
   }
 
   // Reconstruct cookie header from parsed cookies if raw header is missing
-  if (req.cookies && Object.keys(req.cookies).length > 0) {
+  if (
+    "cookies" in req &&
+    req.cookies &&
+    Object.keys(req.cookies as Record<string, string>).length > 0
+  ) {
     const cookieString = Object.entries(req.cookies as Record<string, string>)
       .map(([k, v]) => `${k}=${v}`)
       .join("; ");
@@ -29,18 +38,22 @@ export function getHeadersFromRequest(req: Request): Record<string, string> {
   return headers;
 }
 
-export function getHeadersAsWebHeaders(req: Request): Headers {
-  return new Headers(getHeadersFromRequest(req));
+export function getHeadersAsWebHeaders(
+  req: ExpressRequest,
+): globalThis.Headers {
+  return new globalThis.Headers(getHeadersFromRequest(req));
 }
 
 export function forwardSetCookie(
-  res: Response,
-  headers: Headers | undefined,
+  res: ExpressResponse,
+  headers: globalThis.Headers | undefined,
 ): void {
   if (!headers) return;
 
   // Node/undici Headers exposes getSetCookie(); fall back to get("set-cookie")
-  const anyHeaders = headers as Headers & { getSetCookie?: () => string[] };
+  const anyHeaders = headers as globalThis.Headers & {
+    getSetCookie?: () => string[];
+  };
   const setCookies: string[] =
     (typeof anyHeaders.getSetCookie === "function"
       ? anyHeaders.getSetCookie()
@@ -54,7 +67,10 @@ export function forwardSetCookie(
 
 // ─── Auth Services ────────────────────────────────────────────────────────────
 
-export const registerService = async (payload: unknown, headers: Headers) => {
+export const registerService = async (
+  payload: unknown,
+  headers: globalThis.Headers,
+) => {
   return authClient.api.signUpEmail({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     body: payload as any,
@@ -63,7 +79,10 @@ export const registerService = async (payload: unknown, headers: Headers) => {
   });
 };
 
-export const loginService = async (payload: unknown, headers: Headers) => {
+export const loginService = async (
+  payload: unknown,
+  headers: globalThis.Headers,
+) => {
   return authClient.api.signInEmail({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     body: payload as any,
@@ -74,7 +93,7 @@ export const loginService = async (payload: unknown, headers: Headers) => {
 
 export const verifyEmailService = async (
   payload: { email: string; callbackURL?: string },
-  headers: Headers,
+  headers: globalThis.Headers,
 ) => {
   const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
   const callbackURL = payload.callbackURL ?? `${frontendUrl}/auth/verify-email`;
@@ -88,7 +107,7 @@ export const verifyEmailService = async (
 
 export const forgotPasswordService = async (
   payload: { email: string },
-  headers: Headers,
+  headers: globalThis.Headers,
 ) => {
   const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
   const redirectTo = `${frontendUrl}/auth/reset-password`;
@@ -102,7 +121,7 @@ export const forgotPasswordService = async (
 
 export const resetPasswordService = async (
   payload: unknown,
-  headers: Headers,
+  headers: globalThis.Headers,
 ) => {
   return authClient.api.resetPassword({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -114,7 +133,7 @@ export const resetPasswordService = async (
 
 export const updatePasswordService = async (
   payload: { newPassword: string; currentPassword: string },
-  headers: Headers,
+  headers: globalThis.Headers,
 ) => {
   if (!payload.newPassword || !payload.currentPassword) {
     throw new Error("newPassword and currentPassword are required");
@@ -130,7 +149,7 @@ export const updatePasswordService = async (
   });
 };
 
-export const logoutService = async (headers: Headers) => {
+export const logoutService = async (headers: globalThis.Headers) => {
   return authClient.api.signOut({
     headers,
     returnHeaders: true,
