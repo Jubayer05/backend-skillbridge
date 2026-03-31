@@ -5,9 +5,11 @@
       "src": "api/index.ts",
       "use": "@vercel/node",
       "config": {
+        "bundle": false,
         "includeFiles": [
-          "src/generated/prisma/**",
-          "prisma/schema.prisma"
+          "src/**/*",
+          "prisma/schema.prisma",
+          "prisma/migrations/**"
         ]
       }
     }
