@@ -6,11 +6,7 @@
       "use": "@vercel/node",
       "config": {
         "bundle": false,
-        "includeFiles": [
-          "src/**/*",
-          "prisma/schema.prisma",
-          "prisma/migrations/**"
-        ]
+        "includeFiles": ["src/**/*", "prisma/schema.prisma"]
       }
     }
   ],

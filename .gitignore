@@ -12,7 +12,7 @@ build
 *.tsbuildinfo
 
 # Generated (Prisma, etc.)
-/src/generated/prisma
+/src/generated
 
 # Logs
 logs
