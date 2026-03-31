@@ -18,8 +18,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.22.0",
   "engines": {
-    "node": ">=20",
-    "pnpm": ">=10"
+    "node": ">=20"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.5.6",
