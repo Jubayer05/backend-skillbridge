@@ -6,7 +6,7 @@
 
     // Environment Settings
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "target": "es2023",
 
     // For Node.js

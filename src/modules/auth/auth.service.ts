@@ -2,7 +2,7 @@ import type {
   Request as ExpressRequest,
   Response as ExpressResponse,
 } from "express";
-import { authClient } from "../../lib/auth";
+import { authClient } from "../../lib/auth.js";
 
 // ─── Header Helpers ───────────────────────────────────────────────────────────
 

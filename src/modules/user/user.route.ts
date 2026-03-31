@@ -1,5 +1,5 @@
 import { type Router, Router as ExpressRouter } from "express";
-import { userController } from "./user.controller";
+import { userController } from "./user.controller.js";
 import type { RequestHandler } from "express";
 
 const userRoutes: Router = ExpressRouter();

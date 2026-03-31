@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { authClient } from "../../lib/auth";
+import { authClient } from "../../lib/auth.js";
 import {
   forgotPasswordService,
   forwardSetCookie,
@@ -10,7 +10,7 @@ import {
   resetPasswordService,
   updatePasswordService,
   verifyEmailService,
-} from "./auth.service";
+} from "./auth.service.js";
 
 export const register = async (req: Request, res: Response) => {
   try {

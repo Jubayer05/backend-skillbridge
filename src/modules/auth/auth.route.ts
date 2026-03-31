@@ -7,8 +7,8 @@ import {
   resetPassword,
   updatePassword,
   verifyEmail,
-} from "./auth.controller";
-import { authenticate } from "./auth.middleware";
+} from "./auth.controller.js";
+import { authenticate } from "./auth.middleware.js";
 
 const router: Router = ExpressRouter();
 

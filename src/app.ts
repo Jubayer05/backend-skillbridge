@@ -2,8 +2,8 @@ import { toNodeHandler } from "better-auth/node";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { type Application } from "express";
-import { authClient } from "./lib/auth";
-import router from "./routes";
+import { authClient } from "./lib/auth.js";
+import router from "./routes/index.js";
 
 const app: Application = express();
 
