@@ -22,15 +22,15 @@ A Node.js / Express REST API built with **Better Auth**, **Prisma**, and **TypeS
 
 ## Tech Stack
 
-| Layer       | Technology                              |
-|-------------|------------------------------------------|
-| Runtime     | Node.js 20+                              |
-| Framework   | Express 5                                |
-| Auth        | Better Auth 1.x                          |
-| ORM         | Prisma 7 + PostgreSQL (Neon)             |
-| Email       | Nodemailer (SMTP / Gmail)                |
-| Language    | TypeScript 5                             |
-| Package mgr | pnpm                                     |
+| Layer       | Technology                   |
+| ----------- | ---------------------------- |
+| Runtime     | Node.js 20+                  |
+| Framework   | Express 5                    |
+| Auth        | Better Auth 1.x              |
+| ORM         | Prisma 7 + PostgreSQL (Neon) |
+| Email       | Nodemailer (SMTP / Gmail)    |
+| Language    | TypeScript 5                 |
+| Package mgr | pnpm                         |
 
 ---
 
@@ -78,12 +78,6 @@ SMTP_FROM=noreply@skillbridge.com
 # Better Auth secrets
 BETTER_AUTH_SECRET=your_32+_char_secret
 BETTER_AUTH_URL=http://localhost:4000
-
-# Optional: short session TTL tests (development only; never set in production)
-# SESSION_TEST_SHORT=true
-# SESSION_TEST_EXPIRES_SECONDS=10
-# SESSION_DISABLE_SLIDING=true
-# Without SESSION_DISABLE_SLIDING=true, Better Auth “slides” expiresAt on each getSession once (expiresIn − updateAge) elapses, so short sessions never appear to expire while you use the app.
 ```
 
 ---
@@ -328,20 +322,20 @@ All endpoints are prefixed with `/users`.
 
 List all users. Supports search, filter, sort, and pagination.
 
-**Query Parameters** *(all optional)*
+**Query Parameters** _(all optional)_
 
-| Parameter | Type | Description |
-|---|---|---|
-| `searchValue` | string | Value to search for |
-| `searchField` | `email` \| `name` | Field to search in (default: `email`) |
-| `searchOperator` | `contains` \| `starts_with` \| `ends_with` | Search operator |
-| `limit` | number | Rows to return (default: 100) |
-| `offset` | number | Rows to skip |
-| `sortBy` | string | Field to sort by |
-| `sortDirection` | `asc` \| `desc` | Sort direction |
-| `filterField` | string | Field to filter by |
-| `filterValue` | string | Value to filter by |
-| `filterOperator` | `eq` \| `ne` \| `lt` \| `lte` \| `gt` \| `gte` \| `in` \| `contains` \| `starts_with` \| `ends_with` | Filter operator |
+| Parameter        | Type                                                                                                 | Description                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `searchValue`    | string                                                                                               | Value to search for                   |
+| `searchField`    | `email` \| `name`                                                                                    | Field to search in (default: `email`) |
+| `searchOperator` | `contains` \| `starts_with` \| `ends_with`                                                           | Search operator                       |
+| `limit`          | number                                                                                               | Rows to return (default: 100)         |
+| `offset`         | number                                                                                               | Rows to skip                          |
+| `sortBy`         | string                                                                                               | Field to sort by                      |
+| `sortDirection`  | `asc` \| `desc`                                                                                      | Sort direction                        |
+| `filterField`    | string                                                                                               | Field to filter by                    |
+| `filterValue`    | string                                                                                               | Value to filter by                    |
+| `filterOperator` | `eq` \| `ne` \| `lt` \| `lte` \| `gt` \| `gte` \| `in` \| `contains` \| `starts_with` \| `ends_with` | Filter operator                       |
 
 **Success Response** `200 OK`
 
@@ -370,7 +364,12 @@ Fetch a single user by ID.
 ```json
 {
   "message": "User fetched successfully",
-  "data": { "id": "...", "name": "Alice", "email": "alice@example.com", "role": "STUDENT" }
+  "data": {
+    "id": "...",
+    "name": "Alice",
+    "email": "alice@example.com",
+    "role": "STUDENT"
+  }
 }
 ```
 
@@ -507,7 +506,7 @@ List all active sessions for a user.
 ```json
 {
   "message": "Sessions fetched successfully",
-  "data": [ { "id": "...", "createdAt": "...", "expiresAt": "..." } ]
+  "data": [{ "id": "...", "createdAt": "...", "expiresAt": "..." }]
 }
 ```
 
@@ -588,11 +587,11 @@ Verify the server is running.
 
 ## Roles & Authorization
 
-| Role      | Description                          |
-|-----------|--------------------------------------|
-| `STUDENT` | Default role for all new users       |
-| `TUTOR`   | Tutor role                           |
-| `ADMIN`   | Full access to all resources         |
+| Role      | Description                    |
+| --------- | ------------------------------ |
+| `STUDENT` | Default role for all new users |
+| `TUTOR`   | Tutor role                     |
+| `ADMIN`   | Full access to all resources   |
 
 ### Using the `authorize` middleware
 
@@ -621,9 +620,9 @@ All error responses follow this shape:
 }
 ```
 
-| Status | Meaning                                  |
-|--------|------------------------------------------|
-| `400`  | Bad Request — missing or invalid fields  |
-| `401`  | Unauthorized — no/invalid session        |
-| `403`  | Forbidden — insufficient role            |
-| `500`  | Internal Server Error                    |
+| Status | Meaning                                 |
+| ------ | --------------------------------------- |
+| `400`  | Bad Request — missing or invalid fields |
+| `401`  | Unauthorized — no/invalid session       |
+| `403`  | Forbidden — insufficient role           |
+| `500`  | Internal Server Error                   |

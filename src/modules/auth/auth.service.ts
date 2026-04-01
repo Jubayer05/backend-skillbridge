@@ -65,6 +65,125 @@ export function forwardSetCookie(
   }
 }
 
+const SKILLBRIDGE_USER_COOKIE = "skillbridge-user";
+const SESSION_FALLBACK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getSetCookieValues(
+  headers: globalThis.Headers | undefined,
+): string[] {
+  if (!headers) return [];
+
+  const anyHeaders = headers as globalThis.Headers & {
+    getSetCookie?: () => string[];
+  };
+
+  return (
+    (typeof anyHeaders.getSetCookie === "function"
+      ? anyHeaders.getSetCookie()
+      : null) ??
+    (headers.get("set-cookie") ? [headers.get("set-cookie") as string] : [])
+  );
+}
+
+function sessionEndFromSetCookie(headers: globalThis.Headers | undefined): Date | null {
+  const setCookies = getSetCookieValues(headers);
+  const sessionCookie = setCookies.find((cookie) =>
+    cookie.startsWith("skillbridge.session_token="),
+  );
+
+  if (!sessionCookie) return null;
+
+  const maxAgeMatch = sessionCookie.match(/(?:^|;\s*)Max-Age=(\d+)/i);
+  if (maxAgeMatch) {
+    const seconds = Number(maxAgeMatch[1]);
+    if (Number.isFinite(seconds) && seconds > 0) {
+      return new Date(Date.now() + seconds * 1000);
+    }
+  }
+
+  const expiresMatch = sessionCookie.match(/(?:^|;\s*)Expires=([^;]+)/i);
+  const expiresValue = expiresMatch?.[1];
+  if (expiresValue) {
+    const parsed = new Date(expiresValue);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function sessionEndFromLoginBody(body: unknown): Date | null {
+  if (!body || typeof body !== "object") {
+    return null;
+  }
+  const session = (body as { session?: { expiresAt?: unknown } }).session;
+  if (!session || typeof session !== "object") {
+    return null;
+  }
+  const ea = session.expiresAt;
+  let d: Date;
+  if (ea instanceof Date) {
+    d = ea;
+  } else if (typeof ea === "number") {
+    const ms = ea < 1_000_000_000_000 ? ea * 1000 : ea;
+    d = new Date(ms);
+  } else if (typeof ea === "string") {
+    d = new Date(ea);
+  } else {
+    return null;
+  }
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+  return d;
+}
+
+/** Mirrors the frontend middleware cookie: `{ user, sessionExpiresAt }` with Max-Age in ms (Express), aligned with Better Auth session. */
+export function setSkillbridgeUserCookie(
+  res: ExpressResponse,
+  loginResponseBody: unknown,
+  headers?: globalThis.Headers,
+): void {
+  if (!loginResponseBody || typeof loginResponseBody !== "object") return;
+  if (!("user" in loginResponseBody)) return;
+  const user = (loginResponseBody as { user: unknown }).user;
+  if (!user || typeof user !== "object") return;
+
+  const fromSetCookie = sessionEndFromSetCookie(headers);
+  const fromBody = sessionEndFromLoginBody(loginResponseBody);
+  const end =
+    fromSetCookie ??
+    fromBody ??
+    new Date(Date.now() + SESSION_FALLBACK_MS);
+  const maxAgeMs = end.getTime() - Date.now();
+  if (maxAgeMs <= 0) return;
+
+  const payload = {
+    user,
+    sessionExpiresAt: end.toISOString(),
+  };
+
+  const secure = process.env.NODE_ENV === "production";
+
+  res.cookie(SKILLBRIDGE_USER_COOKIE, JSON.stringify(payload), {
+    path: "/",
+    maxAge: maxAgeMs,
+    httpOnly: false,
+    sameSite: "lax",
+    secure,
+  });
+}
+
+export function clearSkillbridgeUserCookie(res: ExpressResponse): void {
+  const secure = process.env.NODE_ENV === "production";
+  res.clearCookie(SKILLBRIDGE_USER_COOKIE, {
+    path: "/",
+    sameSite: "lax",
+    secure,
+  });
+}
+
 // ─── Auth Services ────────────────────────────────────────────────────────────
 
 export const registerService = async (

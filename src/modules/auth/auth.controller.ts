@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { authClient } from "../../lib/auth.js";
 import {
+  clearSkillbridgeUserCookie,
   forgotPasswordService,
   forwardSetCookie,
   getHeadersAsWebHeaders,
@@ -8,6 +9,7 @@ import {
   logoutService,
   registerService,
   resetPasswordService,
+  setSkillbridgeUserCookie,
   updatePasswordService,
   verifyEmailService,
 } from "./auth.service.js";
@@ -64,6 +66,7 @@ export const login = async (req: Request, res: Response) => {
   try {
     const result = await loginService(req.body, getHeadersAsWebHeaders(req));
     forwardSetCookie(res, result.headers);
+    setSkillbridgeUserCookie(res, result.response, result.headers);
     res
       .status(200)
       .json({ message: "Login successful", data: result.response });
@@ -217,6 +220,7 @@ export const logout = async (req: Request, res: Response) => {
   try {
     const result = await logoutService(getHeadersAsWebHeaders(req));
     forwardSetCookie(res, result.headers);
+    clearSkillbridgeUserCookie(res);
     res
       .status(200)
       .json({ message: "Logged out successfully", data: result.response });

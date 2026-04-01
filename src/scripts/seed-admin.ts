@@ -13,17 +13,14 @@
  * Idempotent: if the email already exists, promotes to ADMIN, verifies email,
  * and refreshes the credential password hash.
  */
+import { generateRandomString, hashPassword } from "better-auth/crypto";
 import "dotenv/config";
-import { hashPassword, generateRandomString } from "better-auth/crypto";
-import { prisma } from "../lib/prisma.js";
 import { Role } from "../generated/prisma/index.js";
+import { prisma } from "../lib/prisma.js";
 
 function getAdminEmail(): string {
-  const raw =
-    process.env.ADMIN_EMAIL?.trim() ??
-    process.env.ADMIN_EAMAIL?.trim() ??
-    "";
-  return raw.toLowerCase();
+  const raw = process.env.ADMIN_EMAIL?.trim();
+  return raw?.toLowerCase() ?? "";
 }
 
 async function main(): Promise<void> {
@@ -79,7 +76,9 @@ async function main(): Promise<void> {
         });
       }
     });
-    console.log(`Admin seed: updated existing user ${email} (role ADMIN, password refreshed).`);
+    console.log(
+      `Admin seed: updated existing user ${email} (role ADMIN, password refreshed).`,
+    );
     return;
   }
 
