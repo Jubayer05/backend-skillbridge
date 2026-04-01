@@ -92,7 +92,14 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24, // refresh if older than 1 day
   },
 
-  plugins: [admin()],
+  plugins: [
+    admin({
+      // Default is ["admin"] only. Our platform role is uppercase ADMIN (Prisma enum).
+      // Without this, admin APIs return YOU_ARE_NOT_ALLOWED_TO_LIST_USERS even when
+      // Express authorize("ADMIN") passes.
+      adminRoles: ["admin", "ADMIN"],
+    }),
+  ],
 });
 
 export const authClient = auth;
