@@ -30,7 +30,7 @@ function buildWebHeaders(req: ExpressRequest): globalThis.Headers {
 
   for (const [key, value] of Object.entries(req.headers)) {
     if (!value) continue;
-    headers.set(key, Array.isArray(value) ? value[0] ?? "" : value);
+    headers.set(key, Array.isArray(value) ? (value[0] ?? "") : value);
   }
 
   // Reconstruct cookie header from cookie-parser output when the raw header is absent
@@ -63,7 +63,9 @@ export const authenticate = async (
     });
 
     if (!session?.session || !session?.user) {
-      res.status(401).json({ error: "Unauthorized", message: "Invalid or expired session" });
+      res
+        .status(401)
+        .json({ error: "Unauthorized", message: "Invalid or expired session" });
       return;
     }
 
@@ -81,7 +83,8 @@ export const authenticate = async (
     next();
   } catch (error: unknown) {
     console.error("Authentication error:", error);
-    const message = error instanceof Error ? error.message : "Authentication failed";
+    const message =
+      error instanceof Error ? error.message : "Authentication failed";
     res.status(401).json({ error: "Unauthorized", message });
   }
 };

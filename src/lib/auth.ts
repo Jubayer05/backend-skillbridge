@@ -1,6 +1,11 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin } from "better-auth/plugins";
+import {
+  adminAc,
+  defaultRoles,
+  userAc,
+} from "better-auth/plugins/admin/access";
 import { sendResetPasswordEmail, sendVerificationEmail } from "./email.js";
 import { prisma } from "./prisma.js";
 
@@ -94,10 +99,16 @@ export const auth = betterAuth({
 
   plugins: [
     admin({
-      // Default is ["admin"] only. Our platform role is uppercase ADMIN (Prisma enum).
-      // Without this, admin APIs return YOU_ARE_NOT_ALLOWED_TO_LIST_USERS even when
-      // Express authorize("ADMIN") passes.
+      // Permission lookup is acRoles[session.user.role] (case-sensitive).
+      // defaultRoles only has "admin" and "user"; our DB uses ADMIN/STUDENT/TUTOR.
+      defaultRole: "STUDENT",
       adminRoles: ["admin", "ADMIN"],
+      roles: {
+        ...defaultRoles,
+        ADMIN: adminAc,
+        STUDENT: userAc,
+        TUTOR: userAc,
+      },
     }),
   ],
 });
