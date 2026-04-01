@@ -78,6 +78,12 @@ SMTP_FROM=noreply@skillbridge.com
 # Better Auth secrets
 BETTER_AUTH_SECRET=your_32+_char_secret
 BETTER_AUTH_URL=http://localhost:4000
+
+# Optional: short session TTL tests (development only; never set in production)
+# SESSION_TEST_SHORT=true
+# SESSION_TEST_EXPIRES_SECONDS=10
+# SESSION_DISABLE_SLIDING=true
+# Without SESSION_DISABLE_SLIDING=true, Better Auth “slides” expiresAt on each getSession once (expiresIn − updateAge) elapses, so short sessions never appear to expire while you use the app.
 ```
 
 ---
