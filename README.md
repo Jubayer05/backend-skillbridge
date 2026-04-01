@@ -13,7 +13,7 @@ A Node.js / Express REST API built with **Better Auth**, **Prisma**, and **TypeS
 - [Authentication Flow](#authentication-flow)
 - [API Endpoints](#api-endpoints)
   - [Auth Routes](#auth-routes)
-  - [User Routes](#user-routes)
+  - [User Management Routes](#user-management-routes-)
   - [Health Check](#health-check)
 - [Roles & Authorization](#roles--authorization)
 - [Error Responses](#error-responses)
@@ -99,8 +99,9 @@ src/
 │   │   ├── auth.route.ts         # Route definitions
 │   │   └── auth.service.ts       # Business logic, Better Auth API calls
 │   └── user/
-│       ├── user.controller.ts    # CRUD handlers
-│       └── user.route.ts         # Route definitions
+│       ├── user.controller.ts    # Admin user-management handlers
+│       ├── user.route.ts         # Route definitions (all ADMIN-only)
+│       └── user.service.ts       # Better Auth admin API calls
 └── routes/
     └── index.ts                  # Root router (mounts all modules)
 prisma/
@@ -308,77 +309,256 @@ Invalidate the current session. Requires a valid session.
 
 ---
 
-### User Routes
+### User Management Routes 🔒
 
-All user endpoints are prefixed with `/users`.
+All endpoints are prefixed with `/users`.
+
+> **All routes require ADMIN role** — each request must include a valid admin session cookie.
+> Middleware chain: `authenticate` → `authorize("ADMIN")` → handler.
 
 ---
 
-#### `POST /users/signup`
+#### `GET /users` 🔒
 
-Create a user record directly (admin / seeding use). For normal user registration use `/auth/register`.
+List all users. Supports search, filter, sort, and pagination.
 
-**Request Body**
+**Query Parameters** *(all optional)*
+
+| Parameter | Type | Description |
+|---|---|---|
+| `searchValue` | string | Value to search for |
+| `searchField` | `email` \| `name` | Field to search in (default: `email`) |
+| `searchOperator` | `contains` \| `starts_with` \| `ends_with` | Search operator |
+| `limit` | number | Rows to return (default: 100) |
+| `offset` | number | Rows to skip |
+| `sortBy` | string | Field to sort by |
+| `sortDirection` | `asc` \| `desc` | Sort direction |
+| `filterField` | string | Field to filter by |
+| `filterValue` | string | Value to filter by |
+| `filterOperator` | `eq` \| `ne` \| `lt` \| `lte` \| `gt` \| `gte` \| `in` \| `contains` \| `starts_with` \| `ends_with` | Filter operator |
+
+**Success Response** `200 OK`
 
 ```json
 {
-  "name": "Bob Jones",
-  "email": "bob@example.com",
-  "role": "STUDENT"
+  "message": "Users fetched successfully",
+  "data": {
+    "users": [...],
+    "total": 42,
+    "limit": 10,
+    "offset": 0
+  }
 }
 ```
 
-**Success Response** `201 Created` — returns the created user object.
-
 ---
 
-#### `GET /users/get-users`
+#### `GET /users/:id` 🔒
 
-Retrieve all users.
-
-**Success Response** `200 OK` — returns array of user objects.
-
----
-
-#### `GET /users/get-user/:id`
-
-Retrieve a single user by ID.
-
-**Path Parameter**: `id` — user UUID
-
-**Success Response** `200 OK` — returns the user object.
-
----
-
-#### `PUT /users/update-user/:id`
-
-Update a user's `name`, `email`, or `password`.
-
-**Path Parameter**: `id` — user UUID
-
-**Request Body**
-
-```json
-{
-  "name": "Bob Updated",
-  "email": "bob-new@example.com"
-}
-```
-
-**Success Response** `200 OK` — returns the updated user object.
-
----
-
-#### `DELETE /users/delete-user/:id`
-
-Delete a user by ID.
+Fetch a single user by ID.
 
 **Path Parameter**: `id` — user UUID
 
 **Success Response** `200 OK`
 
 ```json
-{ "message": "User deleted successfully" }
+{
+  "message": "User fetched successfully",
+  "data": { "id": "...", "name": "Alice", "email": "alice@example.com", "role": "STUDENT" }
+}
+```
+
+**Error** `404 Not Found` — user not found
+
+---
+
+#### `PATCH /users/:id` 🔒
+
+Update a user's details (name, email, image, or any additional field).
+
+**Path Parameter**: `id` — user UUID
+
+**Request Body**
+
+```json
+{
+  "name": "Alice Updated",
+  "email": "alice-new@example.com"
+}
+```
+
+**Success Response** `200 OK`
+
+```json
+{ "message": "User updated successfully", "data": { ... } }
+```
+
+---
+
+#### `DELETE /users/:id` 🔒
+
+Hard-delete a user from the database.
+
+**Path Parameter**: `id` — user UUID
+
+**Success Response** `200 OK`
+
+```json
+{ "message": "User removed successfully" }
+```
+
+---
+
+#### `PATCH /users/:id/role` 🔒
+
+Change a user's role.
+
+**Path Parameter**: `id` — user UUID
+
+**Request Body**
+
+```json
+{ "role": "TUTOR" }
+```
+
+> Valid roles: `STUDENT`, `TUTOR`, `ADMIN`
+
+**Success Response** `200 OK`
+
+```json
+{ "message": "User role updated successfully", "data": { ... } }
+```
+
+---
+
+#### `PATCH /users/:id/password` 🔒
+
+Set a user's password (admin override — no current password required).
+
+**Path Parameter**: `id` — user UUID
+
+**Request Body**
+
+```json
+{ "newPassword": "NewStrongPassword123!" }
+```
+
+**Success Response** `200 OK`
+
+```json
+{ "message": "User password updated successfully", "data": { ... } }
+```
+
+---
+
+#### `POST /users/:id/ban` 🔒
+
+Ban a user. Revokes all existing sessions and prevents future sign-ins.
+
+**Path Parameter**: `id` — user UUID
+
+**Request Body**
+
+```json
+{
+  "banReason": "Violation of terms",
+  "banExpiresIn": 604800
+}
+```
+
+> `banExpiresIn` — seconds until ban expires (omit for permanent ban).
+
+**Success Response** `200 OK`
+
+```json
+{ "message": "User banned successfully" }
+```
+
+---
+
+#### `POST /users/:id/unban` 🔒
+
+Remove an existing ban from a user.
+
+**Path Parameter**: `id` — user UUID
+
+**Success Response** `200 OK`
+
+```json
+{ "message": "User unbanned successfully" }
+```
+
+---
+
+#### `GET /users/:id/sessions` 🔒
+
+List all active sessions for a user.
+
+**Path Parameter**: `id` — user UUID
+
+**Success Response** `200 OK`
+
+```json
+{
+  "message": "Sessions fetched successfully",
+  "data": [ { "id": "...", "createdAt": "...", "expiresAt": "..." } ]
+}
+```
+
+---
+
+#### `DELETE /users/:id/sessions` 🔒
+
+Revoke all sessions for a user (force sign-out everywhere).
+
+**Path Parameter**: `id` — user UUID
+
+**Success Response** `200 OK`
+
+```json
+{ "message": "All sessions revoked successfully" }
+```
+
+---
+
+#### `DELETE /users/sessions/:token` 🔒
+
+Revoke a specific session by its token.
+
+**Path Parameter**: `token` — session token string
+
+**Success Response** `200 OK`
+
+```json
+{ "message": "Session revoked successfully" }
+```
+
+---
+
+#### `POST /users/:id/impersonate` 🔒
+
+Start an impersonation session as another user. Session lasts 1 hour.
+
+**Path Parameter**: `id` — user UUID
+
+**Success Response** `200 OK` + sets impersonation session cookie
+
+```json
+{ "message": "Impersonation started", "data": { ... } }
+```
+
+---
+
+#### `POST /users/stop-impersonating` 🔒
+
+End the current impersonation session and return to the admin account.
+
+> Requires a valid session (not necessarily ADMIN — the impersonator can call this).
+
+**Success Response** `200 OK` + restores original admin session cookie
+
+```json
+{ "message": "Impersonation stopped", "data": { ... } }
 ```
 
 ---

@@ -1,9 +1,10 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { admin } from "better-auth/plugins";
 import { sendResetPasswordEmail, sendVerificationEmail } from "./email.js";
 import { prisma } from "./prisma.js";
 
-export const authClient = betterAuth({
+export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
@@ -80,10 +81,6 @@ export const authClient = betterAuth({
 
   advanced: {
     cookiePrefix: "skillbridge",
-    // SameSite=None + Secure is required when the frontend and backend
-    // are on different domains (e.g. different Vercel deployments).
-    // Without this the browser blocks the session cookie on cross-site
-    // POST requests, causing logout / protected routes to return 401.
     defaultCookieAttributes: {
       sameSite: "none" as const,
       secure: true,
@@ -94,4 +91,10 @@ export const authClient = betterAuth({
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // refresh if older than 1 day
   },
+
+  plugins: [admin()],
 });
+
+export const authClient = auth;
+
+export default auth;
