@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { authClient } from "../../lib/auth.js";
+import { prisma } from "../../lib/prisma.js";
 import {
   clearSkillbridgeUserCookie,
   forgotPasswordService,
@@ -23,12 +24,35 @@ export const register = async (req: Request, res: Response) => {
       role?: string;
     };
 
-    const normalizedRole = role === "TUTOR" ? "TUTOR" : "STUDENT";
+    if (typeof email !== "string" || email.trim() === "") {
+      res.status(400).json({
+        error: "Registration failed",
+        message: "Email is required",
+      });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true },
+    });
+    if (existing) {
+      res.status(409).json({
+        error: "Registration failed",
+        message: "This email is already registered. Please sign in instead.",
+      });
+      return;
+    }
+
+    const allowedRoles = new Set(["ADMIN", "STUDENT", "TUTOR"]);
+    const upper = typeof role === "string" ? role.trim().toUpperCase() : "";
+    const normalizedRole = allowedRoles.has(upper) ? upper : "STUDENT";
 
     const result = await registerService(
       {
         name,
-        email,
+        email: normalizedEmail,
         password,
         role: normalizedRole,
       },

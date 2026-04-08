@@ -14,25 +14,102 @@ enum Role {
   STUDENT
 }
 
+enum AvailabilitySlotStatus {
+  AVAILABLE
+  BOOKED
+}
+
 model User {
   id            String    @id @default(uuid())
   name          String
   email         String    @unique
   password      String?
+  phoneNumber   String?
+  bio           String?
   role          Role      @default(STUDENT)
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   emailVerified Boolean   @default(false)
   image         String?
-  sessions      Session[]
-  accounts      Account[]
+  tutorProfile       TutorProfile?
+  availabilitySlots  AvailabilitySlot[]
+  sessions           Session[]
+  accounts           Account[]
 
   banned     Boolean?  @default(false)
   banReason  String?
   banExpires DateTime?
 
   @@map("user")
+}
+
+model TutorProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline        String
+  bio             String
+  hourlyRate      Decimal  @db.Decimal(10, 2)
+  experience      Int
+  education       String
+  languages       String[]
+  rating          Decimal? @db.Decimal(3, 2)
+  totalReviews    Int      @default(0)
+  profileImageUrl String?
+  isVerified      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  categories      Category[]
+  subjects        Subject[]
+}
+
+model Category {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  description     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  subjects        Subject[]
+  tutorProfiles   TutorProfile[]
+
+  @@map("category")
+}
+
+model Subject {
+  id                 String             @id @default(uuid())
+  name               String             @unique
+  description        String?
+  categoryId         String
+  category           Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  tutorProfiles      TutorProfile[]
+  availabilitySlots  AvailabilitySlot[]
+
+  @@index([categoryId])
+  @@map("subject")
+}
+
+model AvailabilitySlot {
+  id        String                 @id @default(uuid())
+  tutorId   String
+  tutor     User                   @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  subjectId String?
+  subject   Subject?               @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  date      DateTime               @db.Date
+  startTime String
+  endTime   String
+  startAt   DateTime
+  endAt     DateTime
+  price     Decimal                @db.Decimal(10, 2)
+  status    AvailabilitySlotStatus @default(AVAILABLE)
+  createdAt DateTime               @default(now())
+
+  @@index([tutorId, date])
+  @@index([tutorId, startAt, endAt])
+  @@index([subjectId])
+  @@map("availability_slot")
 }
 
 model Session {

@@ -1,4 +1,4 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin } from "better-auth/plugins";
 import {
@@ -8,6 +8,26 @@ import {
 } from "better-auth/plugins/admin/access";
 import { sendResetPasswordEmail, sendVerificationEmail } from "./email.js";
 import { prisma } from "./prisma.js";
+
+/**
+ * The admin plugin marks `role` as `input: false` (so clients cannot self-assign
+ * admin). That merge wins over `user.additionalFields.role`, which breaks signup
+ * when the API passes `role`. This plugin runs after admin and re-enables input.
+ */
+const allowSignupRoleField: BetterAuthPlugin = {
+  id: "allow-signup-role-field",
+  schema: {
+    user: {
+      fields: {
+        role: {
+          type: "string",
+          required: false,
+          input: true,
+        },
+      },
+    },
+  },
+};
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -110,6 +130,7 @@ export const auth = betterAuth({
         TUTOR: userAc,
       },
     }),
+    allowSignupRoleField,
   ],
 });
 

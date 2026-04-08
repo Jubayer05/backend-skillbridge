@@ -15,7 +15,25 @@ const frontendOrigin = (
 
 app.use(
   cors({
-    origin: frontendOrigin,
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (origin === frontendOrigin) {
+        callback(null, true);
+        return;
+      }
+      if (
+        process.env.NODE_ENV !== "production" &&
+        (origin.startsWith("http://localhost:") ||
+          origin.startsWith("http://127.0.0.1:"))
+      ) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     credentials: true,
   }),
 );
@@ -27,6 +45,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Routes
+
 app.use("/api/v1", router);
 
 // Health check routes
