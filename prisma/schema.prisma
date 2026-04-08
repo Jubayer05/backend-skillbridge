@@ -19,6 +19,12 @@ enum AvailabilitySlotStatus {
   BOOKED
 }
 
+enum BookingStatus {
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id            String    @id @default(uuid())
   name          String
@@ -34,6 +40,7 @@ model User {
   image         String?
   tutorProfile       TutorProfile?
   availabilitySlots  AvailabilitySlot[]
+  studentBookings    Booking[]  @relation("StudentBookings")
   sessions           Session[]
   accounts           Account[]
 
@@ -62,6 +69,7 @@ model TutorProfile {
   updatedAt       DateTime @updatedAt
   categories      Category[]
   subjects        Subject[]
+  bookings        Booking[]
 }
 
 model Category {
@@ -105,11 +113,37 @@ model AvailabilitySlot {
   price     Decimal                @db.Decimal(10, 2)
   status    AvailabilitySlotStatus @default(AVAILABLE)
   createdAt DateTime               @default(now())
+  bookings  Booking[]
 
   @@index([tutorId, date])
   @@index([tutorId, startAt, endAt])
   @@index([subjectId])
   @@map("availability_slot")
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  studentId       String
+  student         User          @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  tutorProfileId  String
+  tutorProfile    TutorProfile  @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)
+  availabilitySlotId String     @unique
+  availabilitySlot   AvailabilitySlot @relation(fields: [availabilitySlotId], references: [id], onDelete: Cascade)
+  date            DateTime
+  startTime       String
+  endTime         String
+  duration        Int
+  totalPrice      Decimal       @db.Decimal(10, 2)
+  status          BookingStatus @default(CONFIRMED)
+  paymentMethod   String        @default("COD")
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([studentId])
+  @@index([tutorProfileId])
+  @@index([status])
+  @@map("booking")
 }
 
 model Session {

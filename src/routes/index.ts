@@ -7,6 +7,7 @@ import profileRoutes from "../modules/profile/profile.route.js";
 import tutorRoutes from "../modules/tutor/tutor.route.js";
 import uploadRouter from "../modules/upload/upload.route.js";
 import userRoutes from "../modules/user/user.route.js";
+import bookingRoutes from "../modules/bookings/booking.route.js";
 
 const router: Router = Router();
 
@@ -14,6 +15,7 @@ router.use("/auth", authRouter);
 router.use("/categories", categoryRoutes);
 router.use("/subjects", subjectRoutes);
 router.use("/availability", availabilityRoutes);
+router.use("/bookings", bookingRoutes);
 router.use("/profile", profileRoutes);
 router.use("/tutor", tutorRoutes);
 router.use("/users", userRoutes);
