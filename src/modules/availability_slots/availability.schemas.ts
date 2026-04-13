@@ -25,8 +25,15 @@ const slotStatus = z.enum(["available", "booked"], {
   message: 'status must be "available" or "booked"',
 });
 
+const slotNameField = z
+  .string()
+  .trim()
+  .min(1, "name is required")
+  .max(120, "name must be at most 120 characters");
+
 export const createAvailabilitySlotBodySchema = z
   .object({
+    name: slotNameField,
     subjectId: z.string().uuid("subjectId must be a valid UUID"),
     date: dateStr,
     startTime: timeStr,
@@ -38,6 +45,7 @@ export const createAvailabilitySlotBodySchema = z
 
 export const updateAvailabilitySlotBodySchema = z
   .object({
+    name: slotNameField.optional(),
     subjectId: z.string().uuid("subjectId must be a valid UUID").optional(),
     date: dateStr.optional(),
     startTime: timeStr.optional(),

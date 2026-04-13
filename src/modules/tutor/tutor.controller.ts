@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 
 import { sendZodError } from "../../lib/zod-response.js";
+import { listTutorReviewsQuerySchema } from "../reviews/review.schemas.js";
+import { listReviewsForLoggedInTutorDashboardService } from "../reviews/review.service.js";
 import {
   featuredTutorsQuerySchema,
   tutorUserIdParamSchema,
@@ -104,6 +106,46 @@ export const listFeaturedTutors = async (req: Request, res: Response) => {
     const message =
       error instanceof Error ? error.message : "Failed to list featured tutors";
     res.status(500).json({ error: "Failed to list featured tutors", message });
+  }
+};
+
+export const listMyTutorReviews = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized", message: "Login required" });
+      return;
+    }
+
+    const parsed = listTutorReviewsQuerySchema.safeParse(normalizeQuery(req.query));
+    if (!parsed.success) {
+      sendZodError(res, parsed.error);
+      return;
+    }
+
+    const { page, limit } = parsed.data;
+    const data = await listReviewsForLoggedInTutorDashboardService(
+      userId,
+      page,
+      limit,
+    );
+
+    res.status(200).json({
+      message: "Tutor reviews fetched successfully",
+      data,
+    });
+  } catch (error: unknown) {
+    console.error("List my tutor reviews error:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to list reviews";
+    let statusCode = 500;
+    if (message.includes("Only tutors")) {
+      statusCode = 403;
+    }
+    res.status(statusCode).json({
+      error: statusCode === 403 ? "Forbidden" : "Internal Server Error",
+      message,
+    });
   }
 };
 

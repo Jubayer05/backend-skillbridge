@@ -3,6 +3,55 @@ import { Prisma } from "../../generated/prisma/index.js";
 import { prisma } from "../../lib/prisma.js";
 import type { CreateBookingBody, ListBookingsQuery } from "./booking.schemas.js";
 
+/** Booking rows require a TutorProfile FK; create a minimal row if the tutor never completed onboarding. */
+async function ensureTutorProfileIdForBookingTx(
+  tx: Prisma.TransactionClient,
+  tutorId: string,
+  slotPrice: Prisma.Decimal,
+): Promise<string> {
+  const existing = await tx.tutorProfile.findUnique({
+    where: { userId: tutorId },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const tutorUser = await tx.user.findUnique({
+    where: { id: tutorId },
+    select: { id: true, role: true },
+  });
+  if (!tutorUser || tutorUser.role !== "TUTOR") {
+    throw new Error("Invalid tutor for this slot");
+  }
+
+  try {
+    const created = await tx.tutorProfile.create({
+      data: {
+        userId: tutorId,
+        headline: "Tutor",
+        bio: "Please complete your tutor profile in the dashboard.",
+        hourlyRate: slotPrice,
+        experience: 0,
+        education: "Not specified",
+        languages: [],
+      },
+      select: { id: true },
+    });
+    return created.id;
+  } catch (e: unknown) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002"
+    ) {
+      const again = await tx.tutorProfile.findUnique({
+        where: { userId: tutorId },
+        select: { id: true },
+      });
+      if (again) return again.id;
+    }
+    throw e;
+  }
+}
+
 function parseDateOnly(dateStr: string): Date {
   const [y, m, d] = dateStr.split("-").map(Number);
   if (!y || m === undefined || d === undefined) {
@@ -25,6 +74,8 @@ export type BookingApi = {
   studentId: string;
   tutorProfileId: string;
   availabilitySlotId: string;
+  /** Label from the availability slot (may be empty for legacy rows). */
+  slotName: string;
   date: string;
   startTime: string;
   endTime: string;
@@ -48,7 +99,35 @@ export type BookingApi = {
     name: string;
     category: { id: string; name: string };
   } | null;
+  /** Present when the student has submitted a review for this booking. */
+  reviewId: string | null;
 };
+
+/** Relations required to build {@link BookingApi} via {@link toApi}. */
+const bookingApiInclude = {
+  tutorProfile: {
+    select: {
+      userId: true,
+      headline: true,
+      hourlyRate: true,
+      profileImageUrl: true,
+      user: { select: { id: true, name: true, image: true } },
+    },
+  },
+  availabilitySlot: {
+    select: {
+      name: true,
+      subject: {
+        select: {
+          id: true,
+          name: true,
+          category: { select: { id: true, name: true } },
+        },
+      },
+    },
+  },
+  review: { select: { id: true } },
+} as const;
 
 function mapEnumToApi(
   status: BookingStatus,
@@ -81,18 +160,21 @@ function toApi(row: {
     user: { id: string; name: string; image: string | null };
   };
   availabilitySlot: {
+    name: string;
     subject: {
       id: string;
       name: string;
       category: { id: string; name: string };
     } | null;
   };
+  review: { id: string } | null;
 }): BookingApi {
   return {
     id: row.id,
     studentId: row.studentId,
     tutorProfileId: row.tutorProfileId,
     availabilitySlotId: row.availabilitySlotId,
+    slotName: row.availabilitySlot.name,
     date: row.date.toISOString().slice(0, 10),
     startTime: row.startTime,
     endTime: row.endTime,
@@ -112,6 +194,7 @@ function toApi(row: {
       hourlyRate: row.tutorProfile.hourlyRate.toString(),
     },
     subject: row.availabilitySlot.subject,
+    reviewId: row.review?.id ?? null,
   };
 }
 
@@ -147,28 +230,12 @@ export const createBookingService = async (
     throw new Error("Booking time must be in the future");
   }
 
-  const tutorProfile = await prisma.tutorProfile.findUnique({
-    where: { userId: slot.tutorId },
-    select: {
-      id: true,
-      hourlyRate: true,
-      headline: true,
-      profileImageUrl: true,
-      user: { select: { id: true, name: true, image: true } },
-    },
-  });
-  if (!tutorProfile) {
-    throw new Error("Tutor profile not found");
-  }
-
   const durationMinutes = Math.max(
     1,
     Math.round((slot.endAt.getTime() - slot.startAt.getTime()) / 60000),
   );
 
-  const totalPriceNumber =
-    Number(tutorProfile.hourlyRate.toString()) * (durationMinutes / 60);
-  const totalPrice = totalPriceNumber.toFixed(2);
+  const totalPrice = Number(slot.price.toString()).toFixed(2);
 
   const created = await prisma.$transaction(async (tx) => {
     const latest = await tx.availabilitySlot.findUnique({
@@ -188,12 +255,18 @@ export const createBookingService = async (
       throw new Error("Slot already booked");
     }
 
+    const tutorProfileId = await ensureTutorProfileIdForBookingTx(
+      tx,
+      slot.tutorId,
+      slot.price,
+    );
+
     let booking;
     try {
       booking = await tx.booking.create({
         data: {
           studentId,
-          tutorProfileId: tutorProfile.id,
+          tutorProfileId,
           availabilitySlotId: slot.id,
           date: slot.date,
           startTime: slot.startTime,
@@ -207,28 +280,7 @@ export const createBookingService = async (
               ? input.notes.trim()
               : null,
         },
-        include: {
-          tutorProfile: {
-            select: {
-              userId: true,
-              headline: true,
-              hourlyRate: true,
-              profileImageUrl: true,
-              user: { select: { id: true, name: true, image: true } },
-            },
-          },
-          availabilitySlot: {
-            select: {
-              subject: {
-                select: {
-                  id: true,
-                  name: true,
-                  category: { select: { id: true, name: true } },
-                },
-              },
-            },
-          },
-        },
+        include: bookingApiInclude,
       });
     } catch (e: unknown) {
       if (
@@ -294,28 +346,7 @@ export const listBookingsService = async (
   const rows = await prisma.booking.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: {
-      tutorProfile: {
-        select: {
-          userId: true,
-          headline: true,
-          hourlyRate: true,
-          profileImageUrl: true,
-          user: { select: { id: true, name: true, image: true } },
-        },
-      },
-      availabilitySlot: {
-        select: {
-          subject: {
-            select: {
-              id: true,
-              name: true,
-              category: { select: { id: true, name: true } },
-            },
-          },
-        },
-      },
-    },
+    include: bookingApiInclude,
   });
 
   return rows.map(toApi);
@@ -333,28 +364,7 @@ export const getBookingByIdService = async (
 
   const row = await prisma.booking.findUnique({
     where: { id: bookingId },
-    include: {
-      tutorProfile: {
-        select: {
-          userId: true,
-          headline: true,
-          hourlyRate: true,
-          profileImageUrl: true,
-          user: { select: { id: true, name: true, image: true } },
-        },
-      },
-      availabilitySlot: {
-        select: {
-          subject: {
-            select: {
-              id: true,
-              name: true,
-              category: { select: { id: true, name: true } },
-            },
-          },
-        },
-      },
-    },
+    include: bookingApiInclude,
   });
   if (!row) return null;
 
@@ -396,28 +406,7 @@ export const cancelBookingService = async (
     const booking = await tx.booking.update({
       where: { id: bookingId },
       data: { status: "CANCELLED" },
-      include: {
-        tutorProfile: {
-          select: {
-            userId: true,
-            headline: true,
-            hourlyRate: true,
-            profileImageUrl: true,
-            user: { select: { id: true, name: true, image: true } },
-          },
-        },
-        availabilitySlot: {
-          select: {
-            subject: {
-              select: {
-                id: true,
-                name: true,
-                category: { select: { id: true, name: true } },
-              },
-            },
-          },
-        },
-      },
+      include: bookingApiInclude,
     });
 
     await tx.availabilitySlot.update({
@@ -453,28 +442,7 @@ export const completeBookingService = async (
   const updated = await prisma.booking.update({
     where: { id: bookingId },
     data: { status: "COMPLETED" },
-    include: {
-      tutorProfile: {
-        select: {
-          userId: true,
-          headline: true,
-          hourlyRate: true,
-          profileImageUrl: true,
-          user: { select: { id: true, name: true, image: true } },
-        },
-      },
-      availabilitySlot: {
-        select: {
-          subject: {
-            select: {
-              id: true,
-              name: true,
-              category: { select: { id: true, name: true } },
-            },
-          },
-        },
-      },
-    },
+    include: bookingApiInclude,
   });
 
   return toApi(updated);

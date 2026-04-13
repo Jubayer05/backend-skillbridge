@@ -12,6 +12,7 @@ import {
   createAvailabilitySlotService,
   deleteAvailabilitySlotService,
   getAvailabilitySlotByIdService,
+  getPublicAvailabilitySlotByIdService,
   listAvailabilitySlotsService,
   listPublicAvailabilitySlotsService,
   updateAvailabilitySlotService,
@@ -125,6 +126,43 @@ export const listAvailabilitySlots = async (req: Request, res: Response) => {
   } catch (error: unknown) {
     console.error("List availability slots error:", error);
     handleAvailabilityError(res, error, "Failed to list availability slots");
+  }
+};
+
+export const getPublicAvailabilitySlotById = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const parsed = slotIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      sendZodError(res, parsed.error);
+      return;
+    }
+
+    const result = await getPublicAvailabilitySlotByIdService(
+      parsed.data.slotId,
+    );
+
+    if (!result) {
+      res.status(404).json({
+        error: "Not Found",
+        message: "Availability slot not found",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Public availability slot fetched successfully",
+      data: result,
+    });
+  } catch (error: unknown) {
+    console.error("Get public availability slot error:", error);
+    handleAvailabilityError(
+      res,
+      error,
+      "Failed to fetch availability slot",
+    );
   }
 };
 

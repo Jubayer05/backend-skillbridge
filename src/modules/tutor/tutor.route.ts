@@ -4,6 +4,7 @@ import { authenticate, authorize } from "../auth/auth.middleware.js";
 import {
   getTutorProfileByUserId,
   listFeaturedTutors,
+  listMyTutorReviews,
   upsertTutorProfile,
 } from "./tutor.controller.js";
 
@@ -18,6 +19,14 @@ tutorRoutes.put(
   authenticate as RequestHandler,
   authorize("TUTOR") as RequestHandler,
   upsertTutorProfile as RequestHandler,
+);
+
+// GET /tutor/reviews?page=&limit= (signed-in tutor only)
+tutorRoutes.get(
+  "/reviews",
+  authenticate as RequestHandler,
+  authorize("TUTOR") as RequestHandler,
+  listMyTutorReviews as RequestHandler,
 );
 
 // GET /tutor/profile/:userId

@@ -87,6 +87,7 @@ export type AvailabilitySlotSubjectApi = {
 
 export type AvailabilitySlotApi = {
   id: string;
+  name: string;
   tutorId: string;
   subjectId: string | null;
   subject: AvailabilitySlotSubjectApi | null;
@@ -127,6 +128,7 @@ function mapSubjectToApi(
 
 function toApiSlot(row: {
   id: string;
+  name: string;
   tutorId: string;
   subjectId: string | null;
   date: Date;
@@ -145,6 +147,7 @@ function toApiSlot(row: {
 }): AvailabilitySlotApi {
   return {
     id: row.id,
+    name: row.name,
     tutorId: row.tutorId,
     subjectId: row.subjectId,
     subject: mapSubjectToApi(row.subject ?? null),
@@ -177,6 +180,7 @@ const tutorForSlotInclude = {
 
 function toPublicApiSlot(row: {
   id: string;
+  name: string;
   tutorId: string;
   subjectId: string | null;
   date: Date;
@@ -215,6 +219,16 @@ export const createAvailabilitySlotService = async (
 
   if (user.role !== "TUTOR") {
     throw new Error("Only tutors can create availability slots");
+  }
+
+  const tutorProfile = await prisma.tutorProfile.findUnique({
+    where: { userId: tutorId },
+    select: { id: true },
+  });
+  if (!tutorProfile) {
+    throw new Error(
+      "Create your tutor profile in the dashboard before adding availability slots",
+    );
   }
 
   const subject = await prisma.subject.findUnique({
@@ -257,6 +271,7 @@ export const createAvailabilitySlotService = async (
 
   const row = await prisma.availabilitySlot.create({
     data: {
+      name: input.name.trim(),
       tutorId,
       subjectId: input.subjectId,
       date: dateOnly,
@@ -333,6 +348,16 @@ export const listPublicAvailabilitySlotsService = async (params: {
   });
 
   return rows.map(toPublicApiSlot);
+};
+
+export const getPublicAvailabilitySlotByIdService = async (
+  slotId: string,
+): Promise<PublicAvailabilitySlotApi | null> => {
+  const row = await prisma.availabilitySlot.findFirst({
+    where: { id: slotId },
+    include: { ...subjectForSlotInclude, ...tutorForSlotInclude },
+  });
+  return row ? toPublicApiSlot(row) : null;
 };
 
 export const getAvailabilitySlotByIdService = async (
@@ -419,6 +444,7 @@ export const updateAvailabilitySlotService = async (
   const row = await prisma.availabilitySlot.update({
     where: { id: slotId },
     data: {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
       ...(input.subjectId !== undefined
         ? { subjectId: input.subjectId }
         : {}),

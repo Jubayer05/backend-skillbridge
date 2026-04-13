@@ -28,8 +28,13 @@ export const upsertTutorProfileBodySchema = z
   })
   .strict();
 
+/** Matches `User.id` in the DB — may be UUID or other string (e.g. Better Auth default ids). */
 export const tutorUserIdParamSchema = z.object({
-  userId: z.string().uuid("userId must be a valid UUID"),
+  userId: z
+    .string()
+    .trim()
+    .min(1, "userId is required")
+    .max(128, "userId is too long"),
 });
 
 export const featuredTutorsQuerySchema = z.object({

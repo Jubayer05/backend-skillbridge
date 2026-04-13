@@ -41,6 +41,7 @@ model User {
   tutorProfile       TutorProfile?
   availabilitySlots  AvailabilitySlot[]
   studentBookings    Booking[]  @relation("StudentBookings")
+  reviewsWritten     Review[]   @relation("StudentReviews")
   sessions           Session[]
   accounts           Account[]
 
@@ -70,6 +71,7 @@ model TutorProfile {
   categories      Category[]
   subjects        Subject[]
   bookings        Booking[]
+  reviews         Review[]
 }
 
 model Category {
@@ -101,6 +103,8 @@ model Subject {
 
 model AvailabilitySlot {
   id        String                 @id @default(uuid())
+  /** Display label for the slot (not unique; tutors may reuse names). */
+  name      String                 @default("")
   tutorId   String
   tutor     User                   @relation(fields: [tutorId], references: [id], onDelete: Cascade)
   subjectId String?
@@ -139,11 +143,30 @@ model Booking {
   notes           String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  review          Review?
 
   @@index([studentId])
   @@index([tutorProfileId])
   @@index([status])
   @@map("booking")
+}
+
+model Review {
+  id             String       @id @default(uuid())
+  bookingId      String       @unique
+  booking        Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        User         @relation("StudentReviews", fields: [studentId], references: [id], onDelete: Cascade)
+  tutorProfileId String
+  tutorProfile   TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)
+  rating         Int
+  comment        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([tutorProfileId])
+  @@index([studentId])
+  @@map("review")
 }
 
 model Session {

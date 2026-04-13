@@ -5,6 +5,7 @@ import {
   createAvailabilitySlot,
   deleteAvailabilitySlot,
   getAvailabilitySlotById,
+  getPublicAvailabilitySlotById,
   listAvailabilitySlots,
   listPublicAvailabilitySlots,
   updateAvailabilitySlot,
@@ -24,6 +25,12 @@ availabilityRoutes.get("/slots", listAvailabilitySlots as RequestHandler);
 availabilityRoutes.get(
   "/public/slots",
   listPublicAvailabilitySlots as RequestHandler,
+);
+
+// GET /availability/public/slots/:slotId
+availabilityRoutes.get(
+  "/public/slots/:slotId",
+  getPublicAvailabilitySlotById as RequestHandler,
 );
 
 // POST /availability/slots
