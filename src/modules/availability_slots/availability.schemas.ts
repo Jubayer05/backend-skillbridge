@@ -74,8 +74,8 @@ export const listAvailabilitySlotsQuerySchema = z.object({
 export const listPublicAvailabilitySlotsQuerySchema = z.object({
   subjectId: z.string().uuid("subjectId must be a valid UUID"),
   tutorId: tutorUserIdQuery.optional(),
-  /** Defaults to available for public browsing. */
-  status: slotStatus.optional().default("available"),
+  /** Omit to return both available and booked slots. */
+  status: slotStatus.optional(),
   date: dateStr.optional(),
 });
 

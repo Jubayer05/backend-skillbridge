@@ -1,4 +1,7 @@
-import type { AvailabilitySlotStatus } from "../../generated/prisma/index.js";
+import type {
+  AvailabilitySlotStatus,
+  BookingStatus,
+} from "../../generated/prisma/index.js";
 import { prisma } from "../../lib/prisma.js";
 import type {
   CreateAvailabilitySlotBody,
@@ -79,6 +82,21 @@ function mapEnumToApi(status: AvailabilitySlotStatus): "available" | "booked" {
   return status === "AVAILABLE" ? "available" : "booked";
 }
 
+function mapBookingStatusToApi(
+  s: BookingStatus,
+): "confirmed" | "completed" | "cancelled" {
+  switch (s) {
+    case "CONFIRMED":
+      return "confirmed";
+    case "COMPLETED":
+      return "completed";
+    case "CANCELLED":
+      return "cancelled";
+    default:
+      return "cancelled";
+  }
+}
+
 export type AvailabilitySlotSubjectApi = {
   id: string;
   name: string;
@@ -98,6 +116,11 @@ export type AvailabilitySlotApi = {
   endAt: string;
   price: string;
   status: "available" | "booked";
+  /** Present when a booking row exists for this slot (unique per slot). */
+  booking: {
+    id: string;
+    status: "confirmed" | "completed" | "cancelled";
+  } | null;
   createdAt: string;
 };
 
@@ -144,7 +167,15 @@ function toApiSlot(row: {
     name: string;
     category: { id: string; name: string };
   } | null;
+  bookings?: Array<{ id: string; status: BookingStatus }>;
 }): AvailabilitySlotApi {
+  const booking =
+    row.bookings && row.bookings.length > 0
+      ? {
+          id: row.bookings[0]!.id,
+          status: mapBookingStatusToApi(row.bookings[0]!.status),
+        }
+      : null;
   return {
     id: row.id,
     name: row.name,
@@ -158,6 +189,7 @@ function toApiSlot(row: {
     endAt: row.endAt.toISOString(),
     price: row.price.toString(),
     status: mapEnumToApi(row.status),
+    booking,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -170,6 +202,19 @@ const subjectForSlotInclude = {
       category: { select: { id: true, name: true } },
     },
   },
+} as const;
+
+/** At most one booking per slot (FK unique); include for tutor API responses. */
+const bookingForSlotInclude = {
+  bookings: {
+    select: { id: true, status: true },
+    take: 1,
+  },
+} as const;
+
+const subjectAndBookingForSlotInclude = {
+  ...subjectForSlotInclude,
+  ...bookingForSlotInclude,
 } as const;
 
 const tutorForSlotInclude = {
@@ -282,7 +327,7 @@ export const createAvailabilitySlotService = async (
       price,
       status,
     },
-    include: subjectForSlotInclude,
+    include: subjectAndBookingForSlotInclude,
   });
 
   return toApiSlot(row);
@@ -310,7 +355,7 @@ export const listAvailabilitySlotsService = async (params: {
   const rows = await prisma.availabilitySlot.findMany({
     where,
     orderBy: [{ date: "asc" }, { startAt: "asc" }],
-    include: subjectForSlotInclude,
+    include: subjectAndBookingForSlotInclude,
   });
 
   return rows.map(toApiSlot);
@@ -366,7 +411,7 @@ export const getAvailabilitySlotByIdService = async (
 ): Promise<AvailabilitySlotApi | null> => {
   const row = await prisma.availabilitySlot.findFirst({
     where: { id: slotId, tutorId },
-    include: subjectForSlotInclude,
+    include: subjectAndBookingForSlotInclude,
   });
   return row ? toApiSlot(row) : null;
 };
@@ -456,7 +501,7 @@ export const updateAvailabilitySlotService = async (
       price,
       status,
     },
-    include: subjectForSlotInclude,
+    include: subjectAndBookingForSlotInclude,
   });
 
   return toApiSlot(row);
@@ -466,6 +511,22 @@ export const deleteAvailabilitySlotService = async (
   tutorId: string,
   slotId: string,
 ): Promise<void> => {
+  const slot = await prisma.availabilitySlot.findFirst({
+    where: { id: slotId, tutorId },
+    include: bookingForSlotInclude,
+  });
+
+  if (!slot) {
+    throw new Error("Availability slot not found");
+  }
+
+  const booking = slot.bookings[0];
+  if (booking && booking.status !== "CANCELLED") {
+    throw new Error(
+      "Cannot delete this slot while it has an active or completed booking. Cancel the booking first if allowed.",
+    );
+  }
+
   const result = await prisma.availabilitySlot.deleteMany({
     where: { id: slotId, tutorId },
   });

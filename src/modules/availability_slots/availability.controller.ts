@@ -45,6 +45,8 @@ function handleAvailabilityError(
     statusCode = 403;
   } else if (message.includes("overlaps")) {
     statusCode = 409;
+  } else if (message.includes("Cannot delete this slot")) {
+    statusCode = 409;
   } else if (
     message.includes("must be") ||
     message.includes("Invalid") ||
