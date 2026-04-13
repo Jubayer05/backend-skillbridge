@@ -104,7 +104,7 @@ export type BookingApi = {
 };
 
 /** Relations required to build {@link BookingApi} via {@link toApi}. */
-const bookingApiInclude = {
+export const bookingApiInclude = {
   tutorProfile: {
     select: {
       userId: true,
@@ -137,7 +137,7 @@ function mapEnumToApi(
   return "cancelled";
 }
 
-function toApi(row: {
+export function toApi(row: {
   id: string;
   studentId: string;
   tutorProfileId: string;

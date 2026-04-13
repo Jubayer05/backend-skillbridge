@@ -1,4 +1,5 @@
 import { Router } from "express";
+import adminRoutes from "../modules/admin/admin.route.js";
 import availabilityRoutes from "../modules/availability_slots/availability.route.js";
 import adminReviewRoutes from "../modules/reviews/admin-review.route.js";
 import reviewRoutes from "../modules/reviews/review.route.js";
@@ -23,6 +24,7 @@ router.use("/profile", profileRoutes);
 router.use("/tutor", tutorRoutes);
 router.use("/tutors", tutorsRoutes);
 router.use("/reviews", reviewRoutes);
+router.use("/admin", adminRoutes);
 router.use("/admin/reviews", adminReviewRoutes);
 router.use("/users", userRoutes);
 router.use("/upload", uploadRouter);
