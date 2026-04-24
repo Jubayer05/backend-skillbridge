@@ -8,8 +8,8 @@ export const createBookingBodySchema = z
   .object({
     availabilitySlotId: z.string().uuid("availabilitySlotId must be a valid UUID"),
     paymentMethod: z
-      .literal("COD", {
-        message: 'paymentMethod must be "COD"',
+      .enum(["COD", "SSLCOMMERZ"], {
+        message: 'paymentMethod must be "COD" or "SSLCOMMERZ"',
       })
       .optional()
       .default("COD"),

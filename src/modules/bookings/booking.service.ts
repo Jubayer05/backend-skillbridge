@@ -82,7 +82,7 @@ export type BookingApi = {
   duration: number;
   totalPrice: string;
   status: "confirmed" | "completed" | "cancelled";
-  paymentMethod: "COD";
+  paymentMethod: "COD" | "SSLCOMMERZ";
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -169,6 +169,8 @@ export function toApi(row: {
   };
   review: { id: string } | null;
 }): BookingApi {
+  const paymentMethod =
+    row.paymentMethod === "SSLCOMMERZ" ? "SSLCOMMERZ" : ("COD" as const);
   return {
     id: row.id,
     studentId: row.studentId,
@@ -181,7 +183,7 @@ export function toApi(row: {
     duration: row.duration,
     totalPrice: row.totalPrice.toString(),
     status: mapEnumToApi(row.status),
-    paymentMethod: "COD",
+    paymentMethod,
     notes: row.notes,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -247,8 +249,11 @@ export const createBookingService = async (
       throw new Error("Slot is not available");
     }
 
-    const existing = await tx.booking.findUnique({
-      where: { availabilitySlotId: slot.id },
+    const existing = await tx.booking.findFirst({
+      where: {
+        availabilitySlotId: slot.id,
+        status: { in: ["CONFIRMED", "COMPLETED"] },
+      },
       select: { id: true },
     });
     if (existing) {
@@ -274,7 +279,7 @@ export const createBookingService = async (
           duration: durationMinutes,
           totalPrice,
           status: "CONFIRMED",
-          paymentMethod: "COD",
+          paymentMethod: input.paymentMethod ?? "COD",
           notes:
             input.notes !== undefined && input.notes.trim() !== ""
               ? input.notes.trim()
@@ -302,6 +307,40 @@ export const createBookingService = async (
 
   return toApi(created);
 };
+
+export async function cancelBookingBySystem(
+  bookingId: string,
+): Promise<BookingApi | null> {
+  const existing = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, availabilitySlotId: true, status: true },
+  });
+  if (!existing) return null;
+  if (existing.status === "CANCELLED") {
+    const row = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: bookingApiInclude,
+    });
+    return row ? toApi(row) : null;
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.update({
+      where: { id: bookingId },
+      data: { status: "CANCELLED" },
+      include: bookingApiInclude,
+    });
+
+    await tx.availabilitySlot.update({
+      where: { id: booking.availabilitySlotId },
+      data: { status: "AVAILABLE" },
+    });
+
+    return booking;
+  });
+
+  return toApi(updated);
+}
 
 export const listBookingsService = async (
   userId: string,

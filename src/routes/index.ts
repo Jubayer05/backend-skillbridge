@@ -12,6 +12,7 @@ import tutorsRoutes from "../modules/tutors/tutors.routes.js";
 import uploadRouter from "../modules/upload/upload.route.js";
 import userRoutes from "../modules/user/user.route.js";
 import bookingRoutes from "../modules/bookings/booking.route.js";
+import sslcommerzRoutes from "../modules/payments/sslcommerz/sslcommerz.route.js";
 
 const router: Router = Router();
 
@@ -20,6 +21,7 @@ router.use("/categories", categoryRoutes);
 router.use("/subjects", subjectRoutes);
 router.use("/availability", availabilityRoutes);
 router.use("/bookings", bookingRoutes);
+router.use("/payments/sslcommerz", sslcommerzRoutes);
 router.use("/profile", profileRoutes);
 router.use("/tutor", tutorRoutes);
 router.use("/tutors", tutorsRoutes);

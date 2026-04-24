@@ -131,7 +131,7 @@ model Booking {
   student         User          @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
   tutorProfileId  String
   tutorProfile    TutorProfile  @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)
-  availabilitySlotId String     @unique
+  availabilitySlotId String
   availabilitySlot   AvailabilitySlot @relation(fields: [availabilitySlotId], references: [id], onDelete: Cascade)
   date            DateTime
   startTime       String
@@ -147,6 +147,7 @@ model Booking {
 
   @@index([studentId])
   @@index([tutorProfileId])
+  @@index([availabilitySlotId])
   @@index([status])
   @@map("booking")
 }

@@ -204,10 +204,12 @@ const subjectForSlotInclude = {
   },
 } as const;
 
-/** At most one booking per slot (FK unique); include for tutor API responses. */
+/** Include the latest non-cancelled booking (if any) for tutor API responses. */
 const bookingForSlotInclude = {
   bookings: {
     select: { id: true, status: true },
+    where: { status: { not: "CANCELLED" } },
+    orderBy: { createdAt: "desc" },
     take: 1,
   },
 } as const;
